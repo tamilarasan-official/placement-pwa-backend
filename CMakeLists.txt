@@ -33,8 +33,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Drogon::Drogon
-    mongo::mongocxx_shared
-    mongo::bsoncxx_shared
+    $<IF:$<TARGET_EXISTS:mongo::mongocxx_static>,mongo::mongocxx_static,mongo::mongocxx_shared>
+    $<IF:$<TARGET_EXISTS:mongo::bsoncxx_static>,mongo::bsoncxx_static,mongo::bsoncxx_shared>
     OpenSSL::SSL
     OpenSSL::Crypto
 )
