@@ -1,0 +1,7 @@
+build/
+logs/
+uploads/
+.git/
+.gitignore
+.env
+*.md

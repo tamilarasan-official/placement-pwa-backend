@@ -21,18 +21,28 @@ int main() {
     // Configure Drogon
     auto &app = drogon::app();
 
-    // Load config
-    app.loadConfigFile("./config.json");
+    // Railway sets PORT env var — override config if present
+    const char* portEnv = std::getenv("PORT");
+    int port = portEnv ? std::stoi(portEnv) : 8080;
+    app.addListener("0.0.0.0", port);
+    app.setThreadNum(4);
+    app.setLogLevel(trantor::Logger::kInfo);
+    app.setUploadPath("./uploads");
+    app.setClientMaxBodySize(10 * 1024 * 1024);  // 10MB
 
-    // CORS middleware
-    app.registerPreRoutingAdvice([](const drogon::HttpRequestPtr &req,
+    // CORS configuration
+    const char* corsOriginEnv = std::getenv("CORS_ORIGIN");
+    std::string corsOrigin = corsOriginEnv ? corsOriginEnv : "https://placement-pwa-frontend-deploy.vercel.app";
+
+    app.registerPreRoutingAdvice([corsOrigin](const drogon::HttpRequestPtr &req,
                                      drogon::FilterCallback &&stop,
                                      drogon::FilterChainCallback &&pass) {
         if (req->method() == drogon::Options) {
             auto resp = drogon::HttpResponse::newHttpResponse();
-            resp->addHeader("Access-Control-Allow-Origin", "*");
+            resp->addHeader("Access-Control-Allow-Origin", corsOrigin);
             resp->addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
             resp->addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+            resp->addHeader("Access-Control-Allow-Credentials", "true");
             resp->addHeader("Access-Control-Max-Age", "86400");
             stop(resp);
             return;
@@ -40,11 +50,12 @@ int main() {
         pass();
     });
 
-    app.registerPostHandlingAdvice([](const drogon::HttpRequestPtr &req,
+    app.registerPostHandlingAdvice([corsOrigin](const drogon::HttpRequestPtr &req,
                                        const drogon::HttpResponsePtr &resp) {
-        resp->addHeader("Access-Control-Allow-Origin", "*");
+        resp->addHeader("Access-Control-Allow-Origin", corsOrigin);
         resp->addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         resp->addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        resp->addHeader("Access-Control-Allow-Credentials", "true");
     });
 
     // Create indexes
@@ -53,7 +64,7 @@ int main() {
     // Auto-seed TPO account if none exists
     MongoService::instance().seedTpo();
 
-    std::cout << "Server starting on port 8080..." << std::endl;
+    std::cout << "Server starting on port " << port << "..." << std::endl;
     app.run();
 
     return 0;
