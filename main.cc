@@ -2,6 +2,9 @@
 #include "MongoService.h"
 #include <iostream>
 #include <cstdlib>
+#include <vector>
+#include <string>
+#include <sstream>
 
 int main() {
     // Initialize MongoDB
@@ -30,16 +33,32 @@ int main() {
     app.setUploadPath("./uploads");
     app.setClientMaxBodySize(10 * 1024 * 1024);  // 10MB
 
-    // CORS configuration
+    // CORS configuration — supports multiple origins (comma-separated in env)
     const char* corsOriginEnv = std::getenv("CORS_ORIGIN");
-    std::string corsOrigin = corsOriginEnv ? corsOriginEnv : "https://placement-pwa-frontend-deploy.vercel.app";
+    std::string corsEnv = corsOriginEnv ? corsOriginEnv : "https://campus-placement-tracking.vercel.app,https://placement-pwa-frontend-deploy.vercel.app";
+    std::vector<std::string> allowedOrigins;
+    {
+        std::istringstream ss(corsEnv);
+        std::string origin;
+        while (std::getline(ss, origin, ',')) {
+            allowedOrigins.push_back(origin);
+        }
+    }
 
-    app.registerPreRoutingAdvice([corsOrigin](const drogon::HttpRequestPtr &req,
+    auto getMatchedOrigin = [allowedOrigins](const drogon::HttpRequestPtr &req) -> std::string {
+        std::string origin = req->getHeader("Origin");
+        for (const auto &allowed : allowedOrigins) {
+            if (origin == allowed) return origin;
+        }
+        return allowedOrigins.empty() ? "*" : allowedOrigins[0];
+    };
+
+    app.registerPreRoutingAdvice([getMatchedOrigin](const drogon::HttpRequestPtr &req,
                                      drogon::FilterCallback &&stop,
                                      drogon::FilterChainCallback &&pass) {
         if (req->method() == drogon::Options) {
             auto resp = drogon::HttpResponse::newHttpResponse();
-            resp->addHeader("Access-Control-Allow-Origin", corsOrigin);
+            resp->addHeader("Access-Control-Allow-Origin", getMatchedOrigin(req));
             resp->addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
             resp->addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
             resp->addHeader("Access-Control-Allow-Credentials", "true");
@@ -50,9 +69,9 @@ int main() {
         pass();
     });
 
-    app.registerPostHandlingAdvice([corsOrigin](const drogon::HttpRequestPtr &req,
+    app.registerPostHandlingAdvice([getMatchedOrigin](const drogon::HttpRequestPtr &req,
                                        const drogon::HttpResponsePtr &resp) {
-        resp->addHeader("Access-Control-Allow-Origin", corsOrigin);
+        resp->addHeader("Access-Control-Allow-Origin", getMatchedOrigin(req));
         resp->addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         resp->addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
         resp->addHeader("Access-Control-Allow-Credentials", "true");
