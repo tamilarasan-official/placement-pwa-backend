@@ -1,0 +1,16 @@
+{
+  "name": "placement-backend",
+  "version-string": "1.0.0",
+  "dependencies": [
+    "drogon",
+    "mongo-cxx-driver",
+    "openssl"
+  ],
+  "builtin-baseline": "aa2d37682e3318d93aef87efa7b0e88e81cd3d59",
+  "overrides": [
+    {
+      "name": "mongo-cxx-driver",
+      "version": "3.11.0"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+build/
+logs/
+uploads/
+.env
+*.exe
+*.dll
+*.obj
+*.o
+*.a
+*.lib
+.vs/
+.vscode/
+CMakeUserPresets.json
